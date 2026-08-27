@@ -14,7 +14,14 @@ This repo is a **narrow complement**, not a competing general-purpose collection
 
 ## Using these skills
 
-### Claude Code
+### Claude Code CLI / GitHub Copilot CLI (plugin marketplace)
+```
+/plugin marketplace add mobilewhatelse/microsoft-fabric-skill
+/plugin install microsoft-fabric@microsoft-fabric-skill
+```
+Gets you an update command (`/plugin update`) and version tracking — see [CHANGELOG.md](CHANGELOG.md) for what changed between versions.
+
+### Claude Code (file-based, no plugin install)
 Add this repo as a skills source in your project's `.claude/settings.json`, or reference individual skill files directly in chat. Skills are in `.github/skills/<skill-name>/SKILL.md`.
 
 ### GitHub Copilot (VS Code)
