@@ -17,6 +17,51 @@ Each mirrored source table typically becomes a Delta table where every row is on
 
 After flattening the two structs (`PKs.ID` → `PKs_ID`, `details.STATUS` → `details_STATUS`), you get one flat table where **the same source-row can appear many times** — once per historical change.
 
+## Just want to look at a table? Don't reach for the full export pipeline
+
+If the goal is simply "show me this table's real columns so I can eyeball/compare it" — not reconstruct current state, not write anything anywhere — resist the urge to run a full export/dedup/write pipeline for that. Flattening alone is enough, and it has no side effects (no files written, nothing exported):
+
+```python
+from pyspark.sql.functions import col, explode_outer, to_json
+from pyspark.sql.types import StructType, ArrayType, MapType
+
+def flatten(df, sep="_"):
+    while True:
+        for f in df.schema.fields:
+            if isinstance(f.dataType, MapType):
+                df = df.withColumn(f.name, to_json(col(f.name)))
+        arr_cols = [f.name for f in df.schema.fields if isinstance(f.dataType, ArrayType)]
+        if arr_cols:
+            for c in arr_cols:
+                df = df.withColumn(c, explode_outer(col(c)))
+            continue
+        has_struct, exprs = False, []
+        for f in df.schema.fields:
+            if isinstance(f.dataType, StructType):
+                has_struct = True
+                for sub in f.dataType.fields:
+                    exprs.append(col(f"`{f.name}`.`{sub.name}`").alias(f"{f.name}{sep}{sub.name}"))
+            else:
+                exprs.append(col(f"`{f.name}`"))
+        if not has_struct:
+            break
+        df = df.select(*exprs)
+    return df
+
+def strip_prefix(df, prefixes=("details_", "PKs_")):
+    renames = {c: c[len(p):] for c in df.columns for p in prefixes if c.startswith(p)}
+    for old, new in renames.items():
+        df = df.withColumnRenamed(old, new)
+    return df
+
+df = spark.read.format("delta").load(table_path)
+df = flatten(df)
+df = strip_prefix(df)
+display(df)
+```
+
+To look at a different table, change `table_path` and re-run — nothing else needed. This still shows every historical CDC event as its own row (not deduplicated to current state) — that's fine for "what columns/values does this table actually have", and you only reach for `is_cdc`/`to_current_state` below once the actual goal is reconstructing one row per entity.
+
 ## Detecting it
 
 ```python
