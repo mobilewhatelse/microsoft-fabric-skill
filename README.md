@@ -6,6 +6,12 @@ No project-specific or organization-specific content — just the mechanics of t
 
 Note: Microsoft Fabric is its own product line, separate from the "Power Platform" (Power Apps, Power Pages, Copilot Studio). See [github.com/mobilewhatelse/power-platform-skill](https://github.com/mobilewhatelse/power-platform-skill) for that side.
 
+## Relationship to Microsoft's official skills
+
+Microsoft publishes a much larger, officially maintained skill collection at **[microsoft/skills-for-fabric](https://github.com/microsoft/skills-for-fabric)** (25 skills covering SQL Warehouse, Spark/Lakehouse notebooks, Power BI, Eventhouse/KQL, Eventstreams, Dataflows Gen2, migrations, and more — installable as a Claude Code / Copilot CLI plugin marketplace). For broad Fabric work, install that first.
+
+This repo is a **narrow complement**, not a competing general-purpose collection — it covers a few specific gaps found while doing real Fabric work that the official skills don't (as of this writing): scripting OneLake file operations with plain REST calls (no SDK, no Spark session involved at all), writing valid Delta tables entirely locally, and a specific CDC-mirroring dedup bug. Two structural conventions here were adopted from the official repo's design: resolving workspaces/items by listing and filtering rather than guessing GUIDs, and the "terminal write" principle (an action isn't done until the state-changing call actually ran and was confirmed) — see [`auth-and-tokens.md`](.github/skills/microsoft-fabric/references/auth-and-tokens.md).
+
 ## Using these skills
 
 ### Claude Code
@@ -27,16 +33,19 @@ Entry point: [`.github/skills/microsoft-fabric/SKILL.md`](.github/skills/microso
 
 | Reference | Content |
 |---|---|
-| [`auth-and-tokens.md`](.github/skills/microsoft-fabric/references/auth-and-tokens.md) | Device-code login without an Azure subscription, the two token audiences (Fabric REST API vs. OneLake), a minimal smoke test |
+| [`auth-and-tokens.md`](.github/skills/microsoft-fabric/references/auth-and-tokens.md) | Device-code login without an Azure subscription, the two token audiences (Fabric REST API vs. OneLake), a minimal smoke test, resolving workspaces/items without guessing GUIDs, the "terminal write" principle |
 | [`onelake-rest-api.md`](.github/skills/microsoft-fabric/references/onelake-rest-api.md) | Upload (create/append/flush), the List Paths URL-shape gotcha, delete, Windows argument-length note |
 | [`delta-tables-without-spark.md`](.github/skills/microsoft-fabric/references/delta-tables-without-spark.md) | Writing valid Delta tables locally with `deltalake` + `pyarrow`, no Spark/Java required |
 | [`cdc-mirroring-and-dedup.md`](.github/skills/microsoft-fabric/references/cdc-mirroring-and-dedup.md) | The `PKs`/`details`/`operation`/`operationAt` shape, the "keep latest row" dedup bug that silently drops real values, and the forward-fill fix |
 | [`governance-and-tenants.md`](.github/skills/microsoft-fabric/references/governance-and-tenants.md) | What gets audit-logged, a checklist before any cross-tenant shortcut/copy, what to do if real data ends up somewhere it shouldn't |
 | [`troubleshooting.md`](.github/skills/microsoft-fabric/references/troubleshooting.md) | Error messages → causes → fixes |
 
-## Core principle
+## Core principles
 
-Script the Fabric REST API and OneLake's storage API directly rather than clicking through the portal UI. Authenticate on demand with `az account get-access-token` (never persist tokens to disk), and prefer generating structurally-realistic synthetic data over copying real data across workspace/tenant boundaries.
+- Script the Fabric REST API and OneLake's storage API directly rather than clicking through the portal UI. Authenticate on demand with `az account get-access-token` (never persist tokens to disk).
+- Resolve workspaces and items by listing and filtering by name — never hard-code or guess a GUID.
+- An action isn't done until the state-changing call actually ran and its result was confirmed — describing or printing what *should* happen is not the same as making it happen.
+- Prefer generating structurally-realistic synthetic data over copying real data across workspace/tenant boundaries.
 
 ## Using a skill
 

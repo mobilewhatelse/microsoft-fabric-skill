@@ -47,3 +47,23 @@ curl -s -H "Authorization: Bearer $TOKEN" "https://api.fabric.microsoft.com/v1/w
 ```
 
 A `200` with a `{"value": [...]}` list of workspaces confirms the identity, tenant, and token audience are all correct before building anything more complex on top.
+
+## Resolving workspaces and items — never guess a GUID
+
+Every Fabric REST call needs a workspace GUID and usually an item GUID. Don't hard-code or guess one you saw once in a URL or a screenshot — resolve it fresh by listing and filtering by name, so the same script keeps working if an item gets recreated or you point it at a different environment:
+
+```bash
+# 1) Find the workspace by display name
+curl -s -H "Authorization: Bearer $TOKEN" "https://api.fabric.microsoft.com/v1/workspaces" \
+  | jq -r '.value[] | select(.displayName=="<workspace-name>") | .id'
+
+# 2) Find an item inside that workspace by display name (and optionally type)
+curl -s -H "Authorization: Bearer $TOKEN" "https://api.fabric.microsoft.com/v1/workspaces/<workspaceId>/items" \
+  | jq -r '.value[] | select(.displayName=="<item-name>" and .type=="Lakehouse") | .id'
+```
+
+This also doubles as a quick "does this even exist / do I have access to it" check — an empty result here is a clearer signal than a confusing 404 further downstream.
+
+## "Terminal write": describing an action is not doing it
+
+If a task involves changing something (uploading a file, creating an item, triggering a job, updating a notebook's saved cells), the task isn't done until the one call that actually persists the change has been made **and its response confirms success**. Printing the file content, the payload, or "here's what I would run" is not the same as running it. Where practical, read the result back afterward (list the uploaded file, re-fetch the item, check the job status) rather than trusting the write call's HTTP status alone.

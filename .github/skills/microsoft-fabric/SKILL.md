@@ -46,3 +46,8 @@ az account get-access-token --resource <api.fabric.microsoft.com | storage.azure
 ```
 
 Never persist that token to disk — fetch it fresh at the start of each script run. This means scripts built with this skill contain zero secrets and are safe to commit to source control as-is.
+
+Two more rules that apply across every reference in this skill:
+
+- **Never guess a workspace or item GUID.** Resolve it by listing and filtering by display name (see [references/auth-and-tokens.md](references/auth-and-tokens.md)) — a GUID copied from an old URL or screenshot silently points at the wrong (or a deleted) item.
+- **"Terminal write": an action isn't done until the state-changing call actually ran and its result was confirmed.** Printing a payload, a file's content, or "here's what I would run" is not the same as making the change — and where practical, read the result back afterward (list the file, re-fetch the item) rather than trusting the write call's status code alone.
