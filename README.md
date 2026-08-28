@@ -43,7 +43,7 @@ Entry point: [`.github/skills/microsoft-fabric/SKILL.md`](.github/skills/microso
 | [`auth-and-tokens.md`](.github/skills/microsoft-fabric/references/auth-and-tokens.md) | Device-code login without an Azure subscription, the two token audiences (Fabric REST API vs. OneLake), a minimal smoke test, resolving workspaces/items without guessing GUIDs, the "terminal write" principle |
 | [`onelake-rest-api.md`](.github/skills/microsoft-fabric/references/onelake-rest-api.md) | Upload (create/append/flush), the List Paths URL-shape gotcha, delete, Windows argument-length note |
 | [`delta-tables-without-spark.md`](.github/skills/microsoft-fabric/references/delta-tables-without-spark.md) | Writing valid Delta tables locally with `deltalake` + `pyarrow`, no Spark/Java required |
-| [`cdc-mirroring-and-dedup.md`](.github/skills/microsoft-fabric/references/cdc-mirroring-and-dedup.md) | The `PKs`/`details`/`operation`/`operationAt` shape, the "keep latest row" dedup bug that silently drops real values, and the forward-fill fix |
+| [`cdc-mirroring-and-dedup.md`](.github/skills/microsoft-fabric/references/cdc-mirroring-and-dedup.md) | The `PKs`/`details`/`operation`/`operationAt` shape, raw-batch-files vs. consolidated-table layers, the "keep latest row" dedup bug and its forward-fill fix, a `strip_prefix` business/metadata-column collision, and a multi-table value-scan pattern |
 | [`governance-and-tenants.md`](.github/skills/microsoft-fabric/references/governance-and-tenants.md) | What gets audit-logged, a checklist before any cross-tenant shortcut/copy, what to do if real data ends up somewhere it shouldn't |
 | [`troubleshooting.md`](.github/skills/microsoft-fabric/references/troubleshooting.md) | Error messages → causes → fixes |
 
