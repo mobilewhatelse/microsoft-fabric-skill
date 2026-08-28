@@ -17,6 +17,27 @@ Each mirrored source table typically becomes a Delta table where every row is on
 
 After flattening the two structs (`PKs.ID` → `PKs_ID`, `details.STATUS` → `details_STATUS`), you get one flat table where **the same source-row can appear many times** — once per historical change.
 
+## Two landing zones, not one: raw batch files vs. the consolidated table
+
+A Fabric Mirroring / CDC setup usually has **two** places the same source table lives, not one — knowing which one you're looking at matters when a value seems to be missing:
+
+| Layer | Shape | Query it with |
+|---|---|---|
+| Raw / landing | One file per sync batch (commonly Avro or JSON), under a path like `Files/<source>/<table>/`. Not one coherent table on its own — a folder of individual batch files that Spark unions on read. | `spark.read.format("avro").load(folder)` or `spark.read.json(folder)` — pointing at the *folder* reads every file in it as one DataFrame |
+| Consolidated | A single Delta table per source table, already merged across all batches — this is the CDC-shaped table (`PKs`/`details`/`operation`/`operationAt`) described above, and what `to_current_state` operates on | `spark.read.format("delta").load(table_path)` |
+
+The raw-to-consolidated merge is exactly where the forward-fill dedup bug further down happens, which gives a useful diagnostic split when a column looks empty or wrong in the consolidated table:
+
+- **Check the raw layer first.** If the value never appears in *any* raw batch file for that primary key, the source system never sent it — not a bug in this pipeline, look further upstream.
+- **If the value does appear in a raw batch but not in the consolidated table**, the consolidation step lost it — this is the class of bug the forward-fill fix below addresses.
+
+```python
+raw = spark.read.format("avro").load(RAW_BATCH_FOLDER)   # or .json(...) if the raw files are JSON
+raw.filter(raw["PKs"]["ID"] == some_id).select("operation", "operationAt", "details").show(truncate=False)
+```
+
+Caveat: raw batch files can drift in schema over time (a column added or renamed between batches). If reading the whole folder fails or the schema looks wrong across a wide date range, narrow to a smaller batch-file subset first rather than assuming the whole folder unions cleanly.
+
 ## Just want to look at a table? Don't reach for the full export pipeline
 
 If the goal is simply "show me this table's real columns so I can eyeball/compare it" — not reconstruct current state, not write anything anywhere — resist the urge to run a full export/dedup/write pipeline for that. Flattening alone is enough, and it has no side effects (no files written, nothing exported):
@@ -48,8 +69,21 @@ def flatten(df, sep="_"):
         df = df.select(*exprs)
     return df
 
+CDC_META_COLS = {"operation", "operationby", "operationat", "filename", "path"}
+
 def strip_prefix(df, prefixes=("details_", "PKs_")):
-    renames = {c: c[len(p):] for c in df.columns for p in prefixes if c.startswith(p)}
+    renames, seen = {}, set(df.columns)
+    for c in df.columns:
+        for p in prefixes:
+            if c.startswith(p):
+                new = c[len(p):]
+                # a business column can collide case-insensitively with a CDC
+                # metadata column (e.g. details_FILENAME -> filename) - rename
+                # instead of silently producing two columns with the same name
+                if new.lower() in CDC_META_COLS or new in seen:
+                    new = f"{new}__{p.rstrip('_')}"
+                renames[c] = new
+                seen.add(new)
     for old, new in renames.items():
         df = df.withColumnRenamed(old, new)
     return df
@@ -61,6 +95,10 @@ display(df)
 ```
 
 To look at a different table, change `table_path` and re-run — nothing else needed. This still shows every historical CDC event as its own row (not deduplicated to current state) — that's fine for "what columns/values does this table actually have", and you only reach for `is_cdc`/`to_current_state` below once the actual goal is reconstructing one row per entity.
+
+### A collision gotcha: business column vs. CDC metadata column
+
+A simplified `strip_prefix` that just does `c[len(prefix):]` and renames unconditionally can produce a genuine `AnalysisException [AMBIGUOUS_REFERENCE]` further down the line: a business column like `details_FILENAME` strips down to `filename` — which is also the name of the CDC provenance metadata column. Spark now has two columns both resolving to `filename` (case-insensitively), and any later reference to that name is ambiguous. The fix is the `CDC_META_COLS`-aware version above: check the stripped name against the known metadata columns (and against names already produced by an earlier rename) before applying it, and suffix on collision instead of overwriting.
 
 ## Detecting it
 
@@ -144,3 +182,42 @@ For any CDC-mirrored table, check whether a column that's semantically "should b
 3. If it is, and your dedup only keeps the single latest row, you have this bug — apply the forward-fill fix and re-run.
 
 Fields that were dropped for an unrelated reason (e.g. binary/blob columns explicitly excluded because a downstream format like CSV can't represent them) are a separate, easier-to-diagnose case — check the export/transform logic's column-drop list before assuming it's the CDC dedup bug.
+
+## Scanning every table and column for a value
+
+A common ad-hoc task on CDC-mirrored/flattened data: "does this value appear anywhere, in any table, in any column?" — e.g. tracing where a specific ID or code shows up across a whole Lakehouse. Two things make this fast and robust across dozens of tables:
+
+**Search each table in two passes, not column-by-column against the full table.** Build one `OR`-chained filter across every column first (one cheap pass over the whole table) to narrow down to the handful of matching rows, then check column-by-column which one actually matched only on that small result:
+
+```python
+from functools import reduce
+from pyspark.sql.functions import col
+
+def search_table(df, needle):
+    str_cols = [f.name for f in df.schema.fields if f.dataType.simpleString() in ("string", "int", "bigint")]
+    if not str_cols:
+        return []
+    combined = reduce(lambda a, b: a | b, (col(c).cast("string").contains(needle) for c in str_cols))
+    hits = df.filter(combined)
+    if hits.rdd.isEmpty():
+        return []
+    row = hits.first()
+    return [c for c in str_cols if row[c] is not None and needle in str(row[c])]
+```
+
+**Wrap the whole per-table pipeline in one try/except, not just the read.** If a loop reads, flattens, and strips prefixes for each table, wrapping only `spark.read...load(...)` in try/except still lets an exception from `flatten()`/`strip_prefix()` — e.g. the collision above, on a table shaped differently than expected — kill the entire multi-table loop instead of just skipping that one table:
+
+```python
+for table_path in all_table_paths:
+    try:
+        df = spark.read.format("delta").load(table_path)
+        df = strip_prefix(flatten(df))
+    except Exception as e:
+        print(f"skipping {table_path}: {e}")
+        continue
+    matches = search_table(df, needle)
+    if matches:
+        print(table_path, matches)
+```
+
+Putting the try/except around the read call alone is the tempting mistake — it looks defensive, but only guards the one line that's least likely to be the one that actually fails.

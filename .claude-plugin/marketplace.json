@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Microsoft Fabric skills for Claude Code and GitHub Copilot CLI - REST/OneLake scripting gaps not covered by the official microsoft/skills-for-fabric collection",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "microsoft-fabric",
       "source": "./",
       "description": "Script Microsoft Fabric via REST/OneLake - auth across two token audiences, OneLake file operations without an SDK, Delta tables without a Spark session, CDC-mirroring current-state dedup and its forward-fill fix, cross-tenant governance checklist",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "skills": [
         "./.github/skills/microsoft-fabric"
       ],
