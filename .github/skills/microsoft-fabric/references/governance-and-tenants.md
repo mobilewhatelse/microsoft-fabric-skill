@@ -17,6 +17,12 @@ Ask, and if in doubt, stop and ask the data owner or your organization's data-go
 3. **Is the data actually anonymized/synthetic**, or does it just *look* like it might be (test-looking codes, placeholder-looking names)? Verify rather than assume — check a few real values, and if still unsure, treat it as sensitive.
 4. **Is there a lower-risk way to achieve the same learning/testing goal?** Generating structurally-realistic synthetic data (matching real column names/types but with fabricated values — see [delta-tables-without-spark.md](delta-tables-without-spark.md)) is almost always sufficient for learning a pipeline's mechanics, without needing real data at all.
 
+## Workspace role isn't the only gate on creating items
+
+Being a Contributor/Member on a workspace lets you open, edit, and run items someone else already created there — but it doesn't automatically mean you can *create new* items of every type. Fabric's admin portal has separate tenant-wide settings (often scoped to specific security groups) that gate which item types a user is allowed to create — Notebook and Lakehouse creation are common examples — independent of that user's role on any given workspace.
+
+Symptom: "New item" only offers a reduced set of types (e.g. just reporting/dashboard items), even though you can freely open and run a Notebook a colleague already created in the same workspace with the same role. This isn't a workspace-permission problem, so raising your workspace role won't fix it — it needs a Fabric admin to check the relevant tenant setting for that item type (and, if appropriate, add your account or group to it).
+
 ## If real (non-anonymized) data ends up somewhere it shouldn't
 
 Don't try to reason your own way to "it's probably fine" — this is exactly the situation the governance/security contact exists for:

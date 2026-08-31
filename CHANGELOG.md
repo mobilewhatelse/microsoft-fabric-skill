@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- `cdc-mirroring-and-dedup.md`: added a `StackOverflowError` caveat to the forward-fill fix — chaining one `.withColumn()` per column builds a query plan whose depth grows with column count, which can blow the JVM stack on wide (100+ column) tables regardless of row count; fixed by building all forward-fill expressions as a list and applying them in a single `select()`.
+- `troubleshooting.md`: added that same `StackOverflowError` symptom, plus `IllegalStateException: Cannot call methods on a stopped SparkContext` — a fatal crash in one cell kills the whole Spark session, and every later cell fails the same way until the session is explicitly stopped and restarted (re-running cells alone does not recover it).
+- `governance-and-tenants.md`: added that workspace role (e.g. Contributor) governs editing/running existing items, but creating *new* items of certain types can be separately gated by tenant-wide admin settings scoped to specific security groups — a distinct permission axis from workspace role.
+
 ## 0.2.0
 
 - `cdc-mirroring-and-dedup.md`: added the raw-batch-files vs. consolidated-Delta-table architecture split (Avro/JSON per-batch landing folder vs. the merged CDC table), with the diagnostic technique of checking the raw layer to tell "source never sent it" from "consolidation lost it".

@@ -173,6 +173,31 @@ def to_current_state(df, pk_cols):
 
 The only structural change versus the naive version is **Step 2** — everything else (dropping deletes, collapsing same-timestamp duplicates, keeping the final latest row, dropping CDC metadata columns afterwards) stays the same. This makes it a safe drop-in replacement in an existing pipeline.
 
+### Wide tables: build the forward-fill as one `select()`, not a `withColumn()` loop
+
+The natural way to write Step 2 is a loop — one `.withColumn()` call per data column:
+
+```python
+# WORKS on narrow tables, but see the caveat below
+filled = collapsed
+for c in data_cols:
+    filled = filled.withColumn(c, spark_last(col(c), ignorenulls=True).over(fill_window))
+```
+
+Each `.withColumn()` call wraps the *previous* DataFrame, so the underlying query plan grows one layer deeper per column. On a table with a modest number of columns this is harmless. On a genuinely wide CDC table (100+ columns is common for mirrored business tables), the plan gets deep enough that Spark's analyzer/optimizer — which walks the plan recursively — can hit a real `StackOverflowError` in the JVM. This isn't a hypothetical: it reproduces reliably on wide-enough tables and has nothing to do with data volume (row count) — a table with 5 rows and 150 columns can trigger it just as easily as one with millions of rows.
+
+Fix: build every forward-filled column as a plain list of expressions and materialize them all in **one** `select()` call, producing a single flat projection instead of N nested ones — the plan depth no longer depends on how many columns the table has:
+
+```python
+fill_exprs = [col(c) for c in pk_cols] + [col("operationAt")] + [
+    spark_last(col(c), ignorenulls=True).over(fill_window).alias(c)
+    for c in data_cols
+]
+filled = collapsed.select(*fill_exprs)
+```
+
+The general lesson extends beyond this one fix: any time you're about to loop `.withColumn()` over a column list — not just here — prefer building the list of expressions and applying them in a single `select()`.
+
 ## How to tell if you're affected
 
 For any CDC-mirrored table, check whether a column that's semantically "should basically always have a value" (a foreign key, an amount, a status) comes out **100% null** or suspiciously sparse after your current-state step, while a related field is well populated. If so:
