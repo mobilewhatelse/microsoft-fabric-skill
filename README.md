@@ -28,7 +28,7 @@ Add this repo as a skills source in your project's `.claude/settings.json`, or r
 Clone or add this repo. Copilot auto-discovers skills from `.github/skills/` and makes them available as slash commands (e.g. `/microsoft-fabric`). Requires VS Code with GitHub Copilot extension in agent mode.
 
 ### Both
-Skills use a shared `SKILL.md` format — `name`, `description`, and content work identically in both tools. Copilot-specific fields (`allowed-tools`, `argument-hint`, `user-invocable`) are ignored by Claude Code.
+Skills use the shared `SKILL.md` format with only the portable frontmatter fields `name`, `description`, and `license`, so the files load unchanged in both tools. Harness-specific fields are deliberately left out (GitHub Copilot does not support them in a skill); `tools/check_skills.py` enforces this.
 
 ## Skills in this repo
 

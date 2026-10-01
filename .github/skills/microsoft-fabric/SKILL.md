@@ -1,9 +1,7 @@
 ---
 name: microsoft-fabric
 description: Script Microsoft Fabric via its REST API and OneLake's storage API - authenticate without an Azure subscription, upload/list/delete files in a Lakehouse, write real Delta tables without a Spark session, recognize CDC-mirrored table structure and its critical dedup bug, and cross-tenant governance caution. Use when the user is working with a Fabric workspace, Lakehouse, OneLake, mirrored/CDC data, or building synthetic test data for a Fabric pipeline.
-allowed-tools: [shell]
-argument-hint: "which workspace/lakehouse are you working on, and is the data real or does it need to be synthetic?"
-user-invocable: true
+license: MIT
 ---
 
 # Microsoft Fabric

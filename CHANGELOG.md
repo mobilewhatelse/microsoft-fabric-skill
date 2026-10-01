@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Fix: user feedback reported that the skills did not work in GitHub Copilot, whose harness does not understand some of the frontmatter properties (its documentation lists only `name`, `description`, `license`, and `allowed-tools` as text). Removed `allowed-tools`, `argument-hint`, and `user-invocable` from every `SKILL.md`; frontmatter is now only `name`, `description`, `license`.
+- Added `tools/check_skills.py`, which fails on non-portable frontmatter fields, name/folder mismatches, over-long descriptions, and unsafe YAML in descriptions.
+- Docs: corrected the README and CLAUDE.md statement that the extra fields were Copilot-specific and ignored by Claude Code.
+
 ## 0.3.0
 
 - `cdc-mirroring-and-dedup.md`: added a `StackOverflowError` caveat to the forward-fill fix — chaining one `.withColumn()` per column builds a query plan whose depth grows with column count, which can blow the JVM stack on wide (100+ column) tables regardless of row count; fixed by building all forward-fill expressions as a list and applying them in a single `select()`.

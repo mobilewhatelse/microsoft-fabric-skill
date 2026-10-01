@@ -5,20 +5,21 @@ Skills live in `.github/skills/<skill-name>/SKILL.md`.
 
 ## When adding or modifying skills
 
-Every `SKILL.md` must include these frontmatter fields so the skill works in both tools:
+Every `SKILL.md` must use **only the frontmatter fields that both Claude Code and GitHub Copilot document**:
 
 ```yaml
 ---
 name: microsoft-fabric-<skill-name>
-description: <one sentence — what it covers and when to invoke it>
-allowed-tools: [shell]
-argument-hint: "<short hint shown in Copilot Chat, e.g. 'which workspace/lakehouse are you working on?'>"
-user-invocable: true
+description: <one or two sentences - what it covers and when to invoke it>
+license: MIT
 ---
 ```
 
-- `name` and `description` — used by both Claude Code and GitHub Copilot
-- `allowed-tools`, `argument-hint`, `user-invocable` — Copilot-specific; Claude Code ignores them
+- `name` (must equal the folder name; lowercase letters, digits, hyphens; max 64) and `description` (10-1024 characters, plain single-line text without `: ` or ` #`) are required.
+- `license` is optional but harmless.
+- **Do not add other fields.** `argument-hint`, `user-invocable`, `disable-model-invocation`, and `allowed-tools` are not understood by every harness; GitHub Copilot does not support them in a skill. `allowed-tools` also pre-approves shell access, which these documentation-only skills do not need. Tools and subagents belong in a custom agent or prompt file, not in a skill.
+
+Run `python tools/check_skills.py` before every commit - it enforces this.
 
 ## Structure
 
