@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Docs: added `CONTRIBUTING.md` (how to add a skill, portable frontmatter, content policy, PR checklist) and `.github/copilot-instructions.md` so contributors and their assistants follow the same rules.
+
 ## 0.3.1
 
 - Fix: user feedback reported that the skills did not work in GitHub Copilot, whose harness does not understand some of the frontmatter properties (its documentation lists only `name`, `description`, `license`, and `allowed-tools` as text). Removed `allowed-tools`, `argument-hint`, and `user-invocable` from every `SKILL.md`; frontmatter is now only `name`, `description`, `license`.

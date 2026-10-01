@@ -58,6 +58,10 @@ Entry point: [`.github/skills/microsoft-fabric/SKILL.md`](.github/skills/microso
 
 Copy the relevant `skills/<name>/` directory into a Claude Code skills directory (project-local `.claude/skills/` or a plugin), or point Claude Code at this repo. Each skill's `SKILL.md` is the entry point; it loads only the reference docs relevant to the current task.
 
+## Contributing
+
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to add or change a skill (portable frontmatter, structure, marketplace entry, checks, content policy).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
